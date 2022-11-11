@@ -41,11 +41,11 @@ public class Pipeline
             async path => await ReadFile(path),
             new ExecutionDataflowBlockOptions{MaxDegreeOfParallelism = MaxReadingTasks});
         
-        var processingBlock = new TransformBlock<string, List<string>>(
+        var processingBlock = new TransformManyBlock<string, string>(
             content => ProcessFile(content),
             new ExecutionDataflowBlockOptions{MaxDegreeOfParallelism = MaxProcessingTasks});
         
-        var writingBlock = new ActionBlock<List<string>>(async fwc => await WriteFile(fwc),
+        var writingBlock = new ActionBlock<string>(async fwc => await WriteFile(fwc),
             new ExecutionDataflowBlockOptions{MaxDegreeOfParallelism = MaxWritingTasks});
 
         readDirectoryBlock.LinkTo(readingBlock, linkOptions);
@@ -90,20 +90,19 @@ public class Pipeline
         return tests;
     }
 
-    private async Task WriteFile(List<string> list)
+    private async Task WriteFile(string list)
     {
         
-        foreach (var str in list)
-        {
+        
 
-            var fileName =  CSharpSyntaxTree.ParseText(str).GetRoot()
+            var fileName =  CSharpSyntaxTree.ParseText(list).GetRoot()
                 .DescendantNodes().OfType<ClassDeclarationSyntax>().First().Identifier.Text;
             
             using (var streamWriter = new StreamWriter(writingPath+"\\"+fileName+".cs"))
             {
-                await streamWriter.WriteAsync(str);
+                await streamWriter.WriteAsync(list);
             }
-        }
+        
     }
     
 }
